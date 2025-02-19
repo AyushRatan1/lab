@@ -23,331 +23,100 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const textContent = `// Your code \nconsole.log('******************** experiment-ex5 dsss****************** clear all;
-%% parameters
-Fs = 1000;
-fc = 100;
-fp = 4;
-bit_t = 0.1;
-%% message generation with BPSK
-m = [0 0 1 1 1 1 0 0];
-%% Polar form conversion
-for bit = 1:length(m)
-    if(m(bit)==0)
-    m(bit) = -1;
-    end
-end
-%% Oversampling (4)
-message = repmat(m,1,fp); 
-%% PN generation and multiply with message
-pn_code = randi([0,1],1,length(message));
-%% Polar form PN 
-for bit = 1:length(pn_code)
-    if(pn_code(bit)==0)
-    pn_code(bit) = -1;
-    end
-end
-DSSS = message.*pn_code;
-%% create carrier and multipy with encoded sequence
-t = 0:1/Fs:(bit_t-1/Fs);
-s0 = -1*cos(2*pi*fc*t);
-s1 = cos(2*pi*fc*t);
-carrier = [];
-BPSK = [];
-for i = 1:length(DSSS)
-if (DSSS(i) == 1)
-    BPSK = [BPSK s1];
-elseif (DSSS(i) == -1)
-    BPSK = [BPSK s0];
-end
-    carrier = [carrier s1];
-end
-%% demodulation
-rx =[];
-for i = 1:length(pn_code)
-if(pn_code(i)==1)
-    rx = [rx BPSK((((i-1)*length(t))+1):i*length(t))];
+            const textContent = `// Your code \nconsole.log('******************** experiment huffman****************** 
+            clc; close all; clear all;
+
+% Input number of symbols and their probabilities
+x = input('Enter the number of symbols: ');
+p = input('Enter the probabilities as a vector: ');
+
+% Generate Huffman dictionary
+[dict, avglen] = huffmandict(1:x, p);
+
+% Calculate entropy (H)
+H = -sum(p .* log2(p));
+
+% Calculate efficiency
+eff = (H / avglen) * 100;
+
+% Calculate redundancy
+redundancy = avglen - H;
+
+% Compute codeword lengths
+code_lengths = cellfun(@length, dict(:, 2));
+
+% Calculate variance of codeword lengths
+var_code_length = var(code_lengths);
+
+% Display results
+disp('Entropy (H):'); disp(H);
+disp('Efficiency (%):'); disp(eff);
+disp('Redundancy:'); disp(redundancy);
+disp('Variance of Codeword Lengths:'); disp(var_code_length);
+disp('Huffman Codewords:');
+disp(dict);
+
+**********************lbc***************
+clc;close all;clear all;
+n=input('enter the codeword length N');
+k=input('enter the dataword length K');
+G=input('enter the generator matrix');
+H=input('enter the parity check matrix');
+datawords=dec2bin(0:2^k-1)-'0';
+codewords=mod(datawords*G,2);
+disp('The codewords are ');
+disp(codewords);
+R=input('enter the received code words');
+syndrome=mod(H*R',2);
+disp(syndrome);
+if all(syndrome==0)
+    disp('No error')
 else
-    rx = [rx (-1)*BPSK((((i-1)*length(t))+1):i*length(t))];
+    disp('Error detected');
 end
-end
-demod = rx.*carrier;
-result = [];
-for i = 1:length(m)
-x = length(t)*fp;
-cx = sum(carrier(((i-1)*x)+1:i*x).*demod(((i-1)*x)+1:i*x));
-if(cx>0)
-    result = [result 1];
-else
-    result = [result -1];
-end
-end
-pn_codeWrong = randi([0,1],1,length(m)*fp);
-resultWrong = [];
-rx2 =[];
-for i = 1:length(pn_code)
-if(pn_codeWrong(i)==1)
-    rx2 = [rx2 BPSK((((i-1)*length(t))+1):i*length(t))];
-else
-    rx2 = [rx2 (-1)*BPSK((((i-1)*length(t))+1):i*length(t))];
-end
-end
-demod2 = rx2.*carrier;
-for i = 1:length(m)
-x = length(t)*fp;
-cx = sum(carrier(((i-1)*x)+1:i*x).*demod2(((i-1)*x)+1:i*x));
-if(cx>0)
-    resultWrong = [resultWrong 1];
-else
-    resultWrong = [resultWrong -1];
-end
-end
-message1 = repmat(result,fp,1);
-message1 = reshape(message1,1,[]);
-message2 = repmat(resultWrong,fp,1);
-message2 = reshape(message2,1,[]);
-%% Draw original message, PN code , encoded sequence on time domain
-pn_size = length(pn_code);
-tpn = linspace(0,length(m)*bit_t-bit_t/fp,pn_size);
-tm = 0:bit_t/fp:length(m)*bit_t-bit_t/fp;
-figure
-subplot(311)
-stairs(tm,message,'linewidth',2)
-title('Message bit sequence')
-axis([0 length(m)*bit_t -1 1]);
-subplot(312)
-stairs(tpn,pn_code,'linewidth',2)
-title('Pseudo-random code');
-axis([0 length(m)*bit_t -1 1]);
-subplot(313)
-stairs(tpn,DSSS,'linewidth',2)
-title('Modulated signal');
-axis([0 length(m)*bit_t -1 1]);
-figure
-subplot(311)
-stairs(tm,message,'linewidth',2)
-title('Message bit sequence')
-axis([0 length(m)*bit_t -1 1]);
-subplot(312)
-stairs(tm,message1,'linewidth',2)
-title('Received message using true pseudo-random code')
-axis([0 length(m)*bit_t -1 1]);
-subplot(313)
-stairs(tm,message2,'linewidth',2)
-title('Received message using wrong pseudo-random code')
-axis([0 length(m)*bit_t -1 1]);
-%% Draw original message, PN code , encoded sequence on frequency domain
-f = linspace(-Fs/2,Fs/2,1024);
-figure
-subplot(311)
-plot(f,abs(fftshift(fft(message,1024))),'linewidth',2);
-title('Message spectrum')
-subplot(312)
-plot(f,abs(fftshift(fft(pn_code,1024))),'linewidth',2);
-title('Pseudo-random code spectrum');
-subplot(313)
-plot(f,abs(fftshift(fft(DSSS,1024))),'linewidth',2);
-title('Modulated signal spectrum');
-figure;
-subplot(311)
-plot(f,abs(fftshift(fft(BPSK,1024))),'linewidth',2);
-title('Transmitted signal spectrum');
-subplot(312)
-plot(f,abs(fftshift(fft(rx,1024))),'linewidth',2);
-title('Received signal multiplied by pseudo code');
-subplot(313)
-plot(f,abs(fftshift(fft(demod,1024))),'linewidth',2);
-title('Demodulated signal spectrum before decision device ');
-
-************************FHSS*****************************
-clc; clear all;% Parameters
-num_bits = 20; % Number of bits
-samples_per_bit = 120; % Samples per bit
-num_carriers = 6; % Number of carrier frequencies
-samples = [10, 20, 30, 40, 60, 120]; % Samples for each carrier frequency
-disp('Enter your bit sequence as a series of 1s and 0s separated by spaces (e.g., "1 0 1 1 0"):');
-manual_input = input('', 's'); % Take input as a string
-bit_sequence = str2num(manual_input); % Convert to numeric array
-if length(bit_sequence) ~= num_bits
-error('The number of bits entered must match the defined number of bits (%d).', num_bits);
-end
-sequence = 2 * bit_sequence - 1;
-input_signal = repelem(sequence, samples_per_bit); % Repeat for bit duration
-t_carrier = linspace(0, 2*pi*num_bits, samples_per_bit*num_bits); % Time vector
-carrier_signal = cos(t_carrier); % Continuous cosine carrier wave
-figure(1);
-subplot(4,1,1); plot(input_signal); axis([-100 2400 -1.5 1.5]);
-title('\bf\it Original Bit Sequence');
-bpsk_mod_signal = input_signal .* carrier_signal;
-subplot(4,1,2); plot(bpsk_mod_signal); axis([-100 2400 -1.5 1.5]);
-title('\bf\it BPSK Modulated Signal');
-carriers = cell(1, num_carriers);
-for i = 1:num_carriers
-t = linspace(0, 2*pi, samples(i) + 1); t(end) = []; % Time for each carrier
-carriers{i} = repmat(cos(t), 1, ceil(samples_per_bit / length(t)));
-carriers{i} = carriers{i}(1:samples_per_bit); % Trim to exact length
-end
-spread_signal = [];
-for i = 1:num_bits
-carrier_idx = randi([1, num_carriers]); % Randomly select a carrier
-spread_signal = [spread_signal carriers{carrier_idx}];
-end
-subplot(4,1,3); plot(spread_signal); axis([-100 2400 -1.5 1.5]);
-title('\bf\it Spread Signal with 6 frequencies');
-freq_hopped_sig = bpsk_mod_signal .* spread_signal;
-subplot(4,1,4); plot(freq_hopped_sig); axis([-100 2400 -1.5 1.5]);
-title('\bf\it Frequency Hopped Spread Spectrum Signal');
-% Demodulation
-bpsk_demodulated = freq_hopped_sig ./ spread_signal;
-figure(2);
-subplot(2,1,1); plot(bpsk_demodulated); axis([-100 2400 -1.5 1.5]);
-title('\bf Demodulated BPSK Signal from Wide Spread');
-original_BPSK_signal = bpsk_demodulated ./ carrier_signal;
-subplot(2,1,2); plot(original_BPSK_signal); axis([-100 2400 -1.5 1.5]);
-title('\bf Transmitted Original Bit Sequence');
-
-
-***************************exp 3**************************
+***************************cyclic sys ********************
 clc; clear; close all;
-N = 1e5; M = 4; L = 4; beta = 0.3; Nsym = 8; EbN0dB = 100;
-snr = 10*log10(log2(M)) + EbN0dB;
+n = input('Enter code word length (n): ');
+k = input('Enter message length (k): ');
+m = input('Enter message as a binary vector: ');
+g = input('enter the Generator poly');
+disp(poly2sym(g))
 
-d = randi([0 M-1], 1, N);
-u = pammod(d, M);
+c = encode(m, n, k, 'cyclic', g);
+disp('Generator Polynomial:'), disp(poly2sym(g));
+disp('Encoded Code Word:'), disp(c);
+r = input('Enter received code word: ');
+disp('Decoded Message:'), disp(decode(r, n, k, 'cyclic', g));
 
-p = rcosdesign(beta, Nsym, L, 'sqrt');
-
-s = filter(p, 1, upsample(u, L));
-r = awgn(s, snr, 'measured');
-vCap = filter(p, 1, r);
-
-filtDelay = Nsym * L / 2;
-dCap = vCap(2*filtDelay+1:L:end-(2*filtDelay))/L;
-upsampled_u = upsample(u, L);
-
-figure;
-subplot(3,2,1); stem(u(1:20)); title('PAM Modulated Symbols');
-subplot(3,2,2); stem(upsampled_u(1:150)); title('Oversampled Symbols');
-subplot(3,2,3); plot(s(1:150), 'r'); title('Pulse Shaped Symbols');
-subplot(3,2,4); plot(r(1:150), 'r'); title('Received Signal');
-subplot(3,2,5); plot(vCap(1:150), 'r'); title('Matched Filter Output');
-subplot(3,2,6); stem(dCap(1:20)); title('Symbol Rate Sampled Output');
-
-% Manual Eye Diagram
-figure; hold on;
-nTraces = 100;
-samplesPerTrace = 3 * L;
-for i = 1:nTraces
-    idx = 2*filtDelay + (i-1)*L;
-    if idx + samplesPerTrace - 1 <= length(vCap)
-        plot((0:samplesPerTrace-1)/L, vCap(idx : idx + samplesPerTrace - 1));
-    end
-end
-title('Eye Diagram'); xlabel('Time (symbol durations)'); ylabel('Amplitude'); grid on;
-
-******************ex6********************
+********************cyc non sys******************
 clc; clear; close all;
+n = input('Enter code word length (n): ');
+k = input('Enter message length (k): ');
+m = input('Enter message as a binary vector: ');
+g = cyclpoly(n, k, 'max');
+m_poly = gf(m, 2);
+g_poly = gf(g, 2);
+c_poly = conv(m_poly, g_poly);
+c = double(c_poly.x); 
+c = mod(c(end-n+1:end), 2); 
+disp('Generator Polynomial:'), disp(poly2sym(g));
+disp('Encoded Code Word:'), disp(c);
+r = input('Enter received code word: ');
+disp('Decoded Message:'), disp(decode(r, n, k, 'cyclic', g));
 
-L = 4; rollOff = 0.5; rcDelay = 10; M = 2; timeOffset = 1;
-htx = rcosdesign(rollOff, 6, L);
-hrx = conj(fliplr(htx));
-
-data = zeros(1, 2*rcDelay); 
-data(1:2:end) = 1;
-txSym = real(pammod(data, M)); 
-txUpSequence = upsample(txSym, L);
-txSequence = filter(htx, 1, txUpSequence);
-
-rxDelayed = [zeros(1, timeOffset), txSequence(1:end-timeOffset)];
-mfOutput = filter(hrx, 1, rxDelayed);
-rxSym = downsample(mfOutput, L);
-
-figure; plot(complex(rxSym(rcDelay+1:end)), 'o'); grid on; xlim([-1.5 1.5]);
-figure; stem(rxSym); xlabel('Symbol Index'); ylabel('Amplitude');
-
-%rxSym = downsample(mfOutput, L, timeOffset);
-figure; plot(complex(rxSym(rcDelay+1:end)), 'o'); grid on; xlim([-1.5 1.5]);
-figure; stem(rxSym); xlabel('Symbol Index'); ylabel('Amplitude');
-
-***************************7a***********************
-
+*********************convolution coding***********************
 clc; clear; close all;
-fs = 1e6; numSamples = 10000; numPaths = 5; maxDelay = 3e-6; dopplerShift = 100;
-impulseSignal = [1; zeros(numSamples-1,1)];
-
-rayleighChan = comm.RayleighChannel('SampleRate', fs, 'PathDelays', linspace(0, maxDelay, numPaths), ...
-    'AveragePathGains', [-2 -3 -6 -8 -10], 'MaximumDopplerShift', dopplerShift, 'NormalizePathGains', true);
-rxImpulseSignal = rayleighChan(impulseSignal);
-
-figure;
-stem((0:99)/fs, 20*log10(abs(rxImpulseSignal(1:100))));
-title('Impulse Response'); xlabel('Time (s)'); ylabel('Gain (dB)'); grid on;
-
-freqResponse = fft(rxImpulseSignal, 1024);
-figure;
-plot(linspace(-fs/2, fs/2, 1024)/1e6, 20*log10(abs(fftshift(freqResponse))));
-title('Frequency Response'); xlabel('Frequency (MHz)'); ylabel('Magnitude (dB)'); grid on;
-
-***************************7b********************
-
-clc; clear; close all;
-fs = 1e6; numSamples = 10000; maxDopplerShift = 100;
-
-txSignal = randn(numSamples, 1) + 1j*randn(numSamples, 1);
-rayleighChan = comm.RayleighChannel('SampleRate', fs, 'MaximumDopplerShift', maxDopplerShift, 'NormalizePathGains', true);
-rxSignal = rayleighChan(txSignal);
-
-figure;
-subplot(2,1,1); plot(real(txSignal(1:100)), 'b-o'); hold on; plot(imag(txSignal(1:100)), 'r-x'); title('Transmitted Signal');
-subplot(2,1,2); plot(real(rxSignal(1:100)), 'b-o'); hold on; plot(imag(rxSignal(1:100)), 'r-x'); title('Received Signal');
-
-figure;
-pwelch(txSignal, [], [], [], fs, 'centered'); hold on;
-pwelch(rxSignal, [], [], [], fs, 'centered'); title('Power Spectral Density');
-
-**************************ex 8*******************
-clear; clc;
-N = 1000; SNR_dB = 10; M = 4; B = 0.01; true_phase = pi/3;
-tx_symbols = exp(1j * (2 * pi * (0:M-1) / M));
-tx_signal = tx_symbols(randi([1 M], N, 1));
-noise = (1/sqrt(2*10^(SNR_dB/10))) * (randn(N,1) + 1j * randn(N,1));
-rx_signal = tx_signal .* exp(1j * true_phase) + noise;
-estimated_phase_ml = angle(sum(conj(tx_signal) .* rx_signal));
-
-phase_error = zeros(N,1); est_phase = zeros(N,1); phi = 0;
-for n = 1:N
-    phase_error(n) = angle(rx_signal(n) * exp(-1j * phi)); 
-    phi = phi + B * phase_error(n);
-    est_phase(n) = phi;
-end
-corrected_rx_signal = rx_signal .* exp(-1j * est_phase);
-
-figure;
-subplot(2,1,1); scatter(real(rx_signal), imag(rx_signal), 'filled'); title('Received');
-subplot(2,1,2); scatter(real(corrected_rx_signal), imag(corrected_rx_signal), 'filled'); title('Corrected');
-
-SNR_dB_range = 0:2:20; var_phase_error = zeros(length(SNR_dB_range),1);
-for idx = 1:length(SNR_dB_range)
-    noise = sqrt(1/(2*10^(SNR_dB_range(idx)/10))) * (randn(N,1) + 1j * randn(N,1));
-    rx_signal = exp(1j * true_phase) + noise;
-    var_phase_error(idx) = var(angle(rx_signal) - true_phase);
-end
-figure; plot(SNR_dB_range, var_phase_error); title('Phase Error Variance vs SNR');
-
-phi_dd = 0; phi_ndd = 0; est_phase_dd = zeros(N,1); est_phase_ndd = zeros(N,1);
-for n = 1:N
-    noise = (1/sqrt(2*10^(SNR_dB))) * (randn + 1j * randn);
-    rx_signal = tx_signal(n) * exp(1j * true_phase) + noise;
-    detected_symbol = exp(1j * round(angle(rx_signal) * M / (2 * pi)) * 2 * pi / M);
-    phi_dd = phi_dd + B * angle(detected_symbol * exp(-1j * phi_dd));
-    est_phase_dd(n) = phi_dd;
-    phi_ndd = phi_ndd + B * angle(rx_signal * exp(-1j * phi_ndd));
-    est_phase_ndd(n) = phi_ndd;
-end
-
-figure;
-subplot(2,1,1); plot(est_phase_dd); title('Decision-Directed Phase Estimate');
-subplot(2,1,2); plot(est_phase_ndd); title('Non-Decision-Directed Phase Estimate');');`;
+msg = input('Enter the binary sequence as a vector (e.g., [1 0 1 1 1]): ');
+constraint_length = 3;
+generator_poly = [7 4]; 
+trellis = poly2trellis(constraint_length, generator_poly);
+encoded_bits = convenc(msg, trellis);
+disp('---------------------');
+disp(['Input sequence: ', sprintf('%d ', msg)]);
+disp(['Encoded bits: ', sprintf('%d ', encoded_bits)]);
+disp(['Encoder Rate: ', num2str(1/2)]);
+disp('----------------------');
+);`;
             document.getElementById('content').textContent = textContent;
         });
     </script>
